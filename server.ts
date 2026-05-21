@@ -353,7 +353,10 @@ async function startServer() {
 
   const PORT = 3000;
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Bible Casting Backend Server running at http://0.0.0.0:${PORT}`);
+    const lanIP = getLocalIP();
+    console.log(`Bible Casting Backend Server running!`);
+    console.log(`Network: http://${lanIP}:${PORT}`);
+    console.log(`TV URL:  http://${lanIP}:${PORT}/?mode=tv`);
   });
 }
 
