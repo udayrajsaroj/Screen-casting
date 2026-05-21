@@ -26,7 +26,7 @@ interface ExtractedPage { title: string; text: string; image?: string; }
 interface DocumentDeck { id: string; name: string; type: 'pdf' | 'pptx'; pages: ExtractedPage[]; }
 
 /* ═══════════════════════════════════════════════════════
-   TV CASTING SCREEN  (tv.html)
+   TV CASTING SCREEN  (React Side / Fallback)
 ═══════════════════════════════════════════════════════ */
 function TVScreen({ systemState, connected }: { systemState: any; connected: boolean }) {
   return (
@@ -97,14 +97,22 @@ function TVScreen({ systemState, connected }: { systemState: any; connected: boo
         {systemState.type === 'slide' && (
           <div className="flex flex-col items-center">
             {systemState.content?.image ? (
-              <div className="grid md:grid-cols-2 gap-10 items-center w-full">
-                <img src={systemState.content.image} alt="" className="max-h-[65vh] object-contain rounded-xl border border-white/10 shadow-2xl mx-auto" />
-                <div className="text-left">
-                  <p className="text-sky-400 text-sm font-mono uppercase tracking-widest mb-2">{systemState.content.title}</p>
-                  <div className="h-px w-16 bg-sky-500 mb-4" />
-                  <p style={{ fontSize: (systemState.fontSize || 32) * 0.75 }} className="text-slate-100 leading-relaxed">{systemState.content.text}</p>
+              // UPDATED: Logic to hide text if showText is false
+              systemState.content.showText !== false ? (
+                <div className="grid md:grid-cols-2 gap-10 items-center w-full">
+                  <img src={systemState.content.image} alt="" className="max-h-[65vh] object-contain rounded-xl border border-white/10 shadow-2xl mx-auto" />
+                  <div className="text-left">
+                    <p className="text-sky-400 text-sm font-mono uppercase tracking-widest mb-2">{systemState.content.title}</p>
+                    <div className="h-px w-16 bg-sky-500 mb-4" />
+                    <p style={{ fontSize: (systemState.fontSize || 32) * 0.75 }} className="text-slate-100 leading-relaxed">{systemState.content.text}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                // Show Image Only (Centered)
+                <div className="w-full h-full flex items-center justify-center">
+                  <img src={systemState.content.image} alt="" className="max-h-[85vh] max-w-full object-contain rounded-xl shadow-2xl" />
+                </div>
+              )
             ) : (
               <>
                 {systemState.content?.subtitle && (
@@ -133,6 +141,7 @@ function TVScreen({ systemState, connected }: { systemState: any; connected: boo
 ═══════════════════════════════════════════════════════ */
 function WiFiCard({ lanIP, port = 3000 }: { lanIP: string; port?: number }) {
   const [copied, setCopied] = useState(false);
+  // Using tv.html as per previous setup
   const tvUrl = `http://${lanIP}:${port}/tv.html`;
 
   const copy = () => {
@@ -205,6 +214,9 @@ export default function App() {
   const [customSlides, setCustomSlides] = useState<Slide[]>(MOCK_SLIDES);
   const [fontSize, setFontSize] = useState(44);
   const [lanIP, setLanIP] = useState('...');
+
+  // NEW STATE: Toggle for Document Text
+  const [showDocText, setShowDocText] = useState(true);
 
   /* ── Bible state ── */
   const [bibleData, setBibleData] = useState<any>(() => {
@@ -288,7 +300,6 @@ export default function App() {
       if (d) setSystemState(d); 
     });
 
-    // DEBUG LOG ADDED HERE
     socket.on('display-update', (d) => { 
       console.log('🔴 TV Update Received:', d); 
       if (d) setSystemState(d); 
@@ -362,12 +373,23 @@ export default function App() {
     emit('cast-slide', { title: slide.title, subtitle: slide.subtitle || '', text: slide.text, slideIndex: idx, totalSlides: customSlides.length, fontSize, background: systemState.background });
   };
 
+  // UPDATED: Added showText flag here
   const castDocPage = (dIdx = activeDocIdx, pIdx = activeDocPage) => {
     const doc = uploadedDocs[dIdx];
     if (!doc) return;
     const page = doc.pages[pIdx];
     if (!page) return;
-    emit('cast-slide', { title: page.title, subtitle: doc.name, text: page.text, image: page.image, slideIndex: pIdx, totalSlides: doc.pages.length, fontSize, background: systemState.background });
+    emit('cast-slide', { 
+      title: page.title, 
+      subtitle: doc.name, 
+      text: page.text, 
+      image: page.image, 
+      slideIndex: pIdx, 
+      totalSlides: doc.pages.length, 
+      fontSize, 
+      background: systemState.background,
+      showText: showDocText // NEW FLAG
+    });
   };
 
   const clearScreen = () => emit('clear-screen', {});
@@ -689,10 +711,21 @@ export default function App() {
           </div>
         )}
 
-        {/* DOCS TAB */}
+        {/* DOCS TAB (UPDATED) */}
         {activeTab === 'docs' && (
           <div className="p-4 flex flex-col gap-4">
             <div className="bg-[#0d1a2e] border border-slate-700/60 rounded-2xl p-4">
+              {/* NEW: Toggle for Text Display */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/50">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Layout Settings</span>
+                <button 
+                  onClick={() => setShowDocText(!showDocText)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition ${showDocText ? 'bg-emerald-900/30 text-emerald-400 border-emerald-700/50' : 'bg-slate-800 text-slate-500 border-slate-700'}`}
+                >
+                  {showDocText ? 'Text: ON' : 'Text: OFF'}
+                </button>
+              </div>
+
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Documents</span>
                 {uploadedDocs[activeDocIdx] && (
