@@ -97,7 +97,7 @@ function TVScreen({ systemState, connected }: { systemState: any; connected: boo
         {systemState.type === 'slide' && (
           <div className="flex flex-col items-center">
             {systemState.content?.image ? (
-              // UPDATED: Logic to hide text if showText is false
+              // Check if text is enabled
               systemState.content.showText !== false ? (
                 <div className="grid md:grid-cols-2 gap-10 items-center w-full">
                   <img src={systemState.content.image} alt="" className="max-h-[65vh] object-contain rounded-xl border border-white/10 shadow-2xl mx-auto" />
@@ -108,12 +108,13 @@ function TVScreen({ systemState, connected }: { systemState: any; connected: boo
                   </div>
                 </div>
               ) : (
-                // Show Image Only (Centered)
-                <div className="w-full h-full flex items-center justify-center">
-                  <img src={systemState.content.image} alt="" className="max-h-[85vh] max-w-full object-contain rounded-xl shadow-2xl" />
+                // Show FULL SCREEN Image Only
+                <div className="absolute inset-0 z-40 bg-black flex items-center justify-center p-0">
+                    <img src={systemState.content.image} alt="" className="h-screen w-screen object-contain" />
                 </div>
               )
             ) : (
+              // ... existing text-only slide logic ...
               <>
                 {systemState.content?.subtitle && (
                   <span className="text-xs text-sky-400 font-bold uppercase tracking-[0.3em] bg-sky-950/50 ring-1 ring-sky-500/30 px-5 py-2 rounded-full mb-6">
