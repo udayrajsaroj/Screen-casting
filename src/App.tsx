@@ -133,7 +133,7 @@ function TVScreen({ systemState, connected }: { systemState: any; connected: boo
 ═══════════════════════════════════════════════════════ */
 function WiFiCard({ lanIP, port = 3000 }: { lanIP: string; port?: number }) {
   const [copied, setCopied] = useState(false);
-  const tvUrl = `http://${lanIP}:${port}/?mode=tv`;
+  const tvUrl = `http://${lanIP}:${port}/index.html`;
 
   const copy = () => {
     navigator.clipboard.writeText(tvUrl);
