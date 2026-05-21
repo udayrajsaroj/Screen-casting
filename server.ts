@@ -288,6 +288,9 @@ async function startServer() {
 
     // Event: Cast Bible Verse
     socket.on('cast-verse', (data) => {
+      // --- DEBUG LOG ADDED ---
+      console.log('🎯 Cast verse received:', data.book, data.chapter, data.verse);
+      
       activeCast = {
         type: 'verse',
         content: data, // { book, chapter, verse, text, translation }
@@ -299,6 +302,9 @@ async function startServer() {
 
     // Event: Cast Custom Slide
     socket.on('cast-slide', (data) => {
+      // --- DEBUG LOG ADDED ---
+      console.log('🎯 Cast slide received:', data.title);
+      
       activeCast = {
         type: 'slide',
         content: data, // { title, text, image, slideIndex, totalSlides }

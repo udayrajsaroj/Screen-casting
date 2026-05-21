@@ -4,9 +4,13 @@ const config: CapacitorConfig = {
   appId: 'com.biblecast.app',
   appName: 'BibleCast',
   webDir: 'dist',
-  server: {
-    url: 'http://192.168.1.45:3000',  // Termux IP
-    cleartext: true
+  android: {
+    allowMixedContent: true
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 

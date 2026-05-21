@@ -157,24 +157,30 @@ function WiFiCard({ lanIP, port = 3000 }: { lanIP: string; port?: number }) {
    MOBILE CONTROLLER  (default view)
 ═══════════════════════════════════════════════════════ */
 export default function App() {
+  /* ── Safe storage helper (Capacitor WebView safe) ── */
+  const safeGet = (key: string): string => {
+    try { return localStorage.getItem(key) || ''; } catch { return ''; }
+  };
+  const safeSet = (key: string, val: string) => {
+    try { localStorage.setItem(key, val); } catch {}
+  };
+
   /* ── URL-based mode detection ── */
   const getInitialMode = (): 'controller' | 'tv' => {
-    const p = new URLSearchParams(window.location.search);
-    const m = p.get('mode');
-    if (m === 'tv') return 'tv';
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const m = p.get('mode');
+      if (m === 'tv') return 'tv';
+    } catch {}
     return 'controller';
   };
 
   const [mode] = useState<'controller' | 'tv'>(getInitialMode);
 
   /* ── Server URL state (persisted in localStorage) ── */
-  const [serverUrl, setServerUrl] = useState<string>(() => {
-    return localStorage.getItem('biblecast_server_url') || '';
-  });
+  const [serverUrl, setServerUrl] = useState<string>(() => safeGet('biblecast_server_url'));
   const [urlInput, setUrlInput] = useState('');
-  const [showUrlScreen, setShowUrlScreen] = useState<boolean>(() => {
-    return !localStorage.getItem('biblecast_server_url');
-  });
+  const [showUrlScreen, setShowUrlScreen] = useState<boolean>(() => !safeGet('biblecast_server_url'));
 
   /* ── Shared socket & cast state ── */
   const socketRef = useRef<Socket | null>(null);
@@ -408,7 +414,7 @@ export default function App() {
               onKeyDown={e => {
                 if (e.key === 'Enter' && urlInput.trim()) {
                   const url = urlInput.trim().replace(/\/$/, '');
-                  localStorage.setItem('biblecast_server_url', url);
+                  safeSet('biblecast_server_url', url);
                   setServerUrl(url);
                   setShowUrlScreen(false);
                 }
@@ -424,7 +430,7 @@ export default function App() {
             onClick={() => {
               if (!urlInput.trim()) return;
               const url = urlInput.trim().replace(/\/$/, '');
-              localStorage.setItem('biblecast_server_url', url);
+              safeSet('biblecast_server_url', url);
               setServerUrl(url);
               setShowUrlScreen(false);
             }}
