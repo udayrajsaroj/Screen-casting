@@ -167,6 +167,15 @@ export default function App() {
 
   const [mode] = useState<'controller' | 'tv'>(getInitialMode);
 
+  /* ── Server URL state (persisted in localStorage) ── */
+  const [serverUrl, setServerUrl] = useState<string>(() => {
+    return localStorage.getItem('biblecast_server_url') || '';
+  });
+  const [urlInput, setUrlInput] = useState('');
+  const [showUrlScreen, setShowUrlScreen] = useState<boolean>(() => {
+    return !localStorage.getItem('biblecast_server_url');
+  });
+
   /* ── Shared socket & cast state ── */
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -216,15 +225,17 @@ export default function App() {
 
   /* ── Fetch LAN IP ── */
   useEffect(() => {
-    fetch('/api/info').then(r => r.json()).then(d => {
+    if (!serverUrl) return;
+    fetch(`${serverUrl}/api/info`).then(r => r.json()).then(d => {
       if (d.lanIP) setLanIP(d.lanIP);
     }).catch(() => {});
-  }, []);
+  }, [serverUrl]);
 
   /* ── Load Bible ── */
   useEffect(() => {
-    fetch('/api/bible').then(r => r.ok ? r.json() : null).then(d => { if (d) setBibleData(d); }).catch(() => {});
-  }, []);
+    if (!serverUrl) return;
+    fetch(`${serverUrl}/api/bible`).then(r => r.ok ? r.json() : null).then(d => { if (d) setBibleData(d); }).catch(() => {});
+  }, [serverUrl]);
 
   /* ── Load PDF.js ── */
   useEffect(() => {
@@ -238,14 +249,16 @@ export default function App() {
 
   /* ── Socket ── */
   useEffect(() => {
-    const socket = io({ transports: ['polling', 'websocket'] });
+    if (!serverUrl) return;
+    if (socketRef.current) socketRef.current.disconnect();
+    const socket = io(serverUrl, { transports: ['polling', 'websocket'] });
     socketRef.current = socket;
     socket.on('connect', () => { setConnected(true); socket.emit('get-state'); });
     socket.on('state-sync', (d) => { if (d) setSystemState(d); });
     socket.on('display-update', (d) => { if (d) setSystemState(d); });
     socket.on('disconnect', () => setConnected(false));
     return () => { socket.disconnect(); };
-  }, []);
+  }, [serverUrl]);
 
   /* ── Bible search index ── */
   const allVerses = useMemo(() => {
@@ -359,7 +372,7 @@ export default function App() {
     setUploadLoading(true);
     const fd = new FormData(); fd.append('media', file);
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const res = await fetch(`${serverUrl}/api/upload`, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
         const bg: Background = { id: `custom-${Date.now()}`, name: file.name.slice(0, 15), url: data.relativeUrl, textColor: 'text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]', fontStyle: 'font-sans' };
@@ -374,9 +387,65 @@ export default function App() {
   /* ── TV mode ── */
   if (mode === 'tv') return <TVScreen systemState={systemState} />;
 
-  /* ─────────────────────────────────────────────
-     MOBILE CONTROLLER VIEW
-  ───────────────────────────────────────────── */
+  /* ── Server URL input screen ── */
+  if (showUrlScreen) {
+    return (
+      <div className="min-h-screen max-w-md mx-auto bg-[#060c18] text-slate-100 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="p-3 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-2xl mb-6 shadow-[0_0_30px_rgba(14,165,233,0.4)]">
+          <Cast className="w-10 h-10 text-white" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-1">BibleCast Remote</h1>
+        <p className="text-slate-400 text-sm mb-8 text-center">Termux server ka IP address daalo</p>
+
+        <div className="w-full bg-[#0d1a2e] border border-slate-700/60 rounded-2xl p-5 flex flex-col gap-4">
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Server URL</label>
+            <input
+              type="text"
+              placeholder="http://192.168.x.x:3000"
+              value={urlInput}
+              onChange={e => setUrlInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && urlInput.trim()) {
+                  const url = urlInput.trim().replace(/\/$/, '');
+                  localStorage.setItem('biblecast_server_url', url);
+                  setServerUrl(url);
+                  setShowUrlScreen(false);
+                }
+              }}
+              className="w-full bg-[#060c18] text-sky-300 font-mono border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-sky-500 outline-none"
+            />
+            <p className="text-[9px] text-slate-500 mt-2">
+              Termux mein <span className="text-slate-300 font-mono">ip addr show</span> chalao IP dekhne ke liye
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              if (!urlInput.trim()) return;
+              const url = urlInput.trim().replace(/\/$/, '');
+              localStorage.setItem('biblecast_server_url', url);
+              setServerUrl(url);
+              setShowUrlScreen(false);
+            }}
+            className="w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(14,165,233,0.3)] transition active:scale-95">
+            <Cast className="w-4 h-4" /> Connect to Server
+          </button>
+        </div>
+
+        {/* Quick suggestions */}
+        <div className="w-full mt-4 flex flex-col gap-2">
+          <p className="text-[9px] text-slate-600 uppercase tracking-widest text-center font-bold">Quick options</p>
+          {['http://localhost:3000', 'http://192.168.1.1:3000', 'http://10.0.0.1:3000'].map(url => (
+            <button key={url} onClick={() => setUrlInput(url)}
+              className="w-full py-2 bg-[#0d1a2e] border border-slate-800 hover:border-slate-600 rounded-xl text-[11px] font-mono text-slate-400 hover:text-white transition active:scale-95">
+              {url}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen max-w-md mx-auto bg-[#060c18] text-slate-100 flex flex-col font-sans">
 
@@ -392,6 +461,10 @@ export default function App() {
               <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
               {connected ? 'Server connected' : 'Disconnected'}
             </p>
+            <button onClick={() => { setUrlInput(serverUrl); setShowUrlScreen(true); }}
+              className="text-[8px] text-slate-600 hover:text-sky-400 transition font-mono mt-0.5 text-left truncate max-w-[160px]">
+              {serverUrl}
+            </button>
           </div>
         </div>
         <button onClick={clearScreen}
