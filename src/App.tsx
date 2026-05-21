@@ -26,7 +26,7 @@ interface ExtractedPage { title: string; text: string; image?: string; }
 interface DocumentDeck { id: string; name: string; type: 'pdf' | 'pptx'; pages: ExtractedPage[]; }
 
 /* ═══════════════════════════════════════════════════════
-   TV CASTING SCREEN  (?mode=tv)
+   TV CASTING SCREEN  (tv.html)
 ═══════════════════════════════════════════════════════ */
 function TVScreen({ systemState, connected }: { systemState: any; connected: boolean }) {
   return (
@@ -133,7 +133,7 @@ function TVScreen({ systemState, connected }: { systemState: any; connected: boo
 ═══════════════════════════════════════════════════════ */
 function WiFiCard({ lanIP, port = 3000 }: { lanIP: string; port?: number }) {
   const [copied, setCopied] = useState(false);
-  const tvUrl = `http://${lanIP}:${port}/index.html`;
+  const tvUrl = `http://${lanIP}:${port}/tv.html`;
 
   const copy = () => {
     navigator.clipboard.writeText(tvUrl);

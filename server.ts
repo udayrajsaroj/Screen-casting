@@ -362,7 +362,7 @@ async function startServer() {
     const lanIP = getLocalIP();
     console.log(`Bible Casting Backend Server running!`);
     console.log(`Network: http://${lanIP}:${PORT}`);
-    console.log(`TV URL:  http://${lanIP}:${PORT}/?mode=tv`);
+    console.log(`TV URL:  http://${lanIP}:${PORT}/tv.html`);
   });
 }
 
