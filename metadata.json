@@ -1,0 +1,6 @@
+{
+  "name": "Bible Casting Platform",
+  "description": "A real-time Bible Verse & Presentation Media Casting platform that controls a TV/Browser display via WebSockets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
