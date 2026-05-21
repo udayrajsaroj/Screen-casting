@@ -28,17 +28,23 @@ interface DocumentDeck { id: string; name: string; type: 'pdf' | 'pptx'; pages: 
 /* ═══════════════════════════════════════════════════════
    TV CASTING SCREEN  (?mode=tv)
 ═══════════════════════════════════════════════════════ */
-function TVScreen({ systemState }: { systemState: any }) {
+function TVScreen({ systemState, connected }: { systemState: any; connected: boolean }) {
   return (
     <div className="w-screen h-screen bg-black overflow-hidden relative flex flex-col justify-center items-center text-center p-6 sm:p-16 select-none">
       {/* Background */}
       <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000 opacity-50"
         style={{ backgroundImage: `url(${systemState.background?.url})` }} />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-black/95" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-black-95" />
       {/* Glow blobs */}
       <div className="absolute inset-0 pointer-events-none mix-blend-screen opacity-40">
         <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-purple-700 rounded-full blur-[180px] opacity-20" />
         <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-sky-600 rounded-full blur-[180px] opacity-20 animate-pulse" />
+      </div>
+
+      {/* DEBUG: Connection Status Indicator (Top Right) */}
+      <div className="absolute top-6 right-6 z-30 flex items-center gap-2 font-mono text-[10px] text-white/50 uppercase tracking-widest bg-black/50 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm">
+        <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-rose-500 animate-pulse'}`} />
+        {connected ? 'Online' : 'Offline'}
       </div>
 
       {/* Corner badge */}
@@ -52,6 +58,9 @@ function TVScreen({ systemState }: { systemState: any }) {
           <div className="flex flex-col items-center gap-5 animate-pulse">
             <Tv className="w-20 h-20 text-slate-600" />
             <p className="text-slate-400 text-sm font-mono uppercase tracking-widest">Standby — Waiting for cast</p>
+            <p className="text-slate-600 text-[10px] font-mono mt-2">
+              {connected ? 'Connected to server' : 'Not connected to server'}
+            </p>
           </div>
         )}
 
@@ -253,16 +262,43 @@ export default function App() {
     return () => { try { document.body.removeChild(s); } catch {} };
   }, []);
 
-  /* ── Socket ── */
+  /* ── Socket Connection Logic ── */
   useEffect(() => {
     if (!serverUrl) return;
     if (socketRef.current) socketRef.current.disconnect();
+    
+    console.log('Connecting to:', serverUrl);
     const socket = io(serverUrl, { transports: ['polling', 'websocket'] });
     socketRef.current = socket;
-    socket.on('connect', () => { setConnected(true); socket.emit('get-state'); });
-    socket.on('state-sync', (d) => { if (d) setSystemState(d); });
-    socket.on('display-update', (d) => { if (d) setSystemState(d); });
-    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('connect', () => { 
+      console.log('Socket Connected'); 
+      setConnected(true); 
+      socket.emit('get-state'); 
+    });
+    
+    socket.on('reconnect', () => {
+      console.log('Socket Reconnected');
+      setConnected(true);
+      socket.emit('get-state');
+    });
+
+    socket.on('state-sync', (d) => { 
+      console.log('State Sync:', d);
+      if (d) setSystemState(d); 
+    });
+
+    // DEBUG LOG ADDED HERE
+    socket.on('display-update', (d) => { 
+      console.log('🔴 TV Update Received:', d); 
+      if (d) setSystemState(d); 
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Socket Disconnected');
+      setConnected(false);
+    });
+
     return () => { socket.disconnect(); };
   }, [serverUrl]);
 
@@ -298,7 +334,14 @@ export default function App() {
   }, [allVerses, bibleQuery]);
 
   /* ── Cast helpers ── */
-  const emit = (event: string, data: any) => socketRef.current?.connected && socketRef.current.emit(event, data);
+  const emit = (event: string, data: any) => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit(event, data);
+    } else {
+      console.warn('Socket not connected, cannot emit:', event);
+      alert("❌ SERVER DISCONNECTED!\n\nPlease check:\n1. Is Termux server running?\n2. Are Phone and TV on same WiFi?\n3. Is the IP Address correct?");
+    }
+  };
 
   const castVerse = (v?: typeof allVerses[0]) => {
     const book = v?.book ?? selectedBook;
@@ -391,7 +434,7 @@ export default function App() {
   const activeChapterVerses = activeBibleChapters[selectedChapter] || {};
 
   /* ── TV mode ── */
-  if (mode === 'tv') return <TVScreen systemState={systemState} />;
+  if (mode === 'tv') return <TVScreen systemState={systemState} connected={connected} />;
 
   /* ── Server URL input screen ── */
   if (showUrlScreen) {
@@ -408,12 +451,13 @@ export default function App() {
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Server URL</label>
             <input
               type="text"
-              placeholder="http://192.168.x.x:3000"
+              placeholder="192.168.x.x:3000"
               value={urlInput}
               onChange={e => setUrlInput(e.target.value)}
               onKeyDown={e => {
                 if (e.key === 'Enter' && urlInput.trim()) {
-                  const url = urlInput.trim().replace(/\/$/, '');
+                  let url = urlInput.trim().replace(/\/$/, '');
+                  if (!url.startsWith('http')) url = 'http://' + url;
                   safeSet('biblecast_server_url', url);
                   setServerUrl(url);
                   setShowUrlScreen(false);
@@ -429,7 +473,8 @@ export default function App() {
           <button
             onClick={() => {
               if (!urlInput.trim()) return;
-              const url = urlInput.trim().replace(/\/$/, '');
+              let url = urlInput.trim().replace(/\/$/, '');
+              if (!url.startsWith('http')) url = 'http://' + url;
               safeSet('biblecast_server_url', url);
               setServerUrl(url);
               setShowUrlScreen(false);
