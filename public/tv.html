@@ -67,14 +67,15 @@
       fontSize: 40
     };
 
-    // 3. Helper: Font Sizing (Ported from React)
+    // 3. Helper: Font Sizing (FIXED: Equalized Hindi & English)
     function getSizes(content, size) {
       let base = (size || 44);
       const total = (content?.textHi?.length || 0) + (content?.textEn?.length || 0) || content?.text?.length || 0;
       const scale = total > 350 ? 0.52 : total > 250 ? 0.65 : total > 160 ? 0.78 : total > 90 ? 0.92 : 1.0;
       return {
-        hi: Math.max(16, Math.round(base * 1.2 * scale)) + 'px',
-        en: Math.max(14, Math.round(base * 0.95 * scale)) + 'px',
+        // UPDATED: Both Hindi and English use the same multiplier (1.0) for equal size
+        hi: Math.max(16, Math.round(base * 1.0 * scale)) + 'px', 
+        en: Math.max(14, Math.round(base * 1.0 * scale)) + 'px', // Changed 0.95 to 1.0
         title: Math.round((size || 40) * 1.2) + 'px',
         text: Math.round((size || 40) * 0.8) + 'px'
       };
@@ -117,8 +118,9 @@
             ${content.textHi && content.textEn ? '<div class="h-px w-32 bg-sky-400/40 mb-4 rounded-full"></div>' : ''}
             
             ${content.textHi && content.textEn ? `
-              <h3 style="font-size: ${sizes.en}" class="font-serif italic text-slate-100 leading-relaxed mb-8 text-shadow-md">
-                ${content.textEn}
+              <!-- UPDATED: Equalized Size, Bright Color (text-sky-100), Strong Shadow -->
+              <h3 style="font-size: ${sizes.en}" class="font-serif italic text-sky-100 leading-relaxed mb-8 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+                "${content.textEn}"
               </h3>
             ` : ''}
 
@@ -149,7 +151,8 @@
                  <div class="text-left">
                    <p class="text-sky-400 text-sm font-mono uppercase tracking-widest mb-2">${content.title}</p>
                    <div class="h-px w-16 bg-sky-500 mb-4"></div>
-                   <p style="font-size: ${sizes.text}" class="text-slate-100 leading-relaxed">${content.text}</p>
+                   <!-- Updated color for consistency -->
+                   <p style="font-size: ${sizes.text}" class="text-sky-100 leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">${content.text}</p>
                  </div>
                </div>
              `;
@@ -173,7 +176,8 @@
                
                <div class="h-px w-48 bg-white/20 mb-8 rounded-full"></div>
                
-               <p style="font-size: ${sizes.text}" class="text-slate-100 max-w-3xl leading-relaxed">
+               <!-- Updated color for consistency -->
+               <p style="font-size: ${sizes.text}" class="text-sky-100 max-w-3xl leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                  ${content.text}
                </p>
              </div>
